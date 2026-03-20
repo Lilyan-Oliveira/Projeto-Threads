@@ -1,81 +1,92 @@
 import threading
 import random
 import time
+import os
 
-# Controle de chegada
+estado = {}
 posicoes = []
 lock = threading.Lock()
 
-def barra_progresso(distancia, tamanho=20):
-    progresso = int((distancia / 100) * tamanho)
-    return "█" * progresso + "-" * (tamanho - progresso)
+def barra(dist, tamanho=20):
+    prog = int((dist / 100) * tamanho)
+    return "█" * prog + "-" * (tamanho - prog)
+
+def limpar():
+    os.system("cls" if os.name == "nt" else "clear")
 
 def corredor(nome):
-    distancia = 0
-    tropeços = 0
+    dist = 0
 
-    while distancia < 100:
+    while dist < 100:
         passo = random.randint(1, 10)
 
-        # 🌦️ Evento global (clima)
-        clima = random.choice(["normal", "chuva"])
-        if clima == "chuva":
-            print(f"🌧️ Pista molhada! {nome} reduz velocidade.")
-            passo = max(1, passo - 3)
-
-        # 🎯 Evento individual
         evento = random.choice(["normal", "tropecou", "boost"])
 
         if evento == "tropecou":
-            tropeços += 1
-            print(f"⚠️ {nome} tropeçou! (x{tropeços})")
-            time.sleep(1)
+            msg = "⚠️ Tropeçou"
             passo = 0
 
         elif evento == "boost":
-            print(f"🚀 {nome} disparou!")
-            passo += random.randint(5, 10)
+            msg = "🚀 Boost"
+            passo = random.randint(1, 5)
 
-        # 💀 Eliminado se tropeçar muito
-        if tropeços >= 3:
-            print(f"💀 {nome} foi eliminado!")
-            return
+        else:
+            msg = ""
 
-        distancia += passo
-        distancia = min(distancia, 100)
+        dist += passo
+        dist = min(dist, 100)
 
-        barra = barra_progresso(distancia)
-        print(f"{nome:12} |{barra}| {distancia:3d}m")
+        with lock:
+            estado[nome] = (msg, dist)
 
-        time.sleep(random.uniform(0.3, 0.7))
+        time.sleep(random.uniform(0.8, 1.5))
 
-    # 🏁 Registro de chegada (thread-safe)
     with lock:
+        estado[nome] = ("🏁 Finalizou", dist)
         posicoes.append(nome)
 
-    print(f"🏁 {nome} terminou!")
+def painel(nomes):
+    while True:
+        limpar()
+        print("🏁 CORRIDA EM TEMPO REAL\n")
 
-# Lista de corredores
-nomes = ["A", "B", "C", "D"]
+        with lock:
+            for nome in nomes:
+                status, dist = estado.get(nome, ("...", 0))
+                print(f"{nome:12} |{barra(dist)}| {dist:3d}m  {status}")
+
+            finalizados = len(posicoes)
+
+        if finalizados == len(nomes):
+            break
+
+        time.sleep(0.2)
+
+# Corredores
+nomes = [f"Corredor {c}" for c in ["A", "B", "C", "D"]]
 
 threads = []
 
-print("🏁 CORRIDA INICIADA!\n")
-
 for nome in nomes:
-    t = threading.Thread(target=corredor, args=(f"Corredor {nome}",))
+    estado[nome] = ("Largando...", 0)
+    t = threading.Thread(target=corredor, args=(nome,))
     threads.append(t)
     t.start()
+
+# Painel
+painel_thread = threading.Thread(target=painel, args=(nomes,))
+painel_thread.start()
 
 for t in threads:
     t.join()
 
-# 🥇 Ranking final
-print("\n🏆 RESULTADO FINAL:\n")
+painel_thread.join()
 
+# Resultado final
+print("\n🏆 RESULTADO FINAL:\n")
 for i, nome in enumerate(posicoes):
-    medalha = ["🥇", "🥈", "🥉"]
-    simbolo = medalha[i] if i < 3 else f"{i+1}º"
-    print(f"{simbolo} {nome}")
+    medalhas = ["🥇", "🥈", "🥉"]
+    pos = medalhas[i] if i < 3 else f"{i+1}º"
+    print(f"{pos} {nome}")
 
 print("\n🏁 Corrida finalizada!")
