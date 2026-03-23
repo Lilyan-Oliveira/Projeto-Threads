@@ -3,88 +3,90 @@ import random
 import time
 import os
 
-estado = {}
-posicoes = []
-lock = threading.Lock()
+ranking = []
+estado = []
 
+# barra de progresso
 def barra(dist, tamanho=20):
-    prog = int((dist / 100) * tamanho)
-    return "█" * prog + "-" * (tamanho - prog)
+    progresso = int((dist / 100) * tamanho)
+    return "█" * progresso + "-" * (tamanho - progresso)
 
 def limpar():
     os.system("cls" if os.name == "nt" else "clear")
 
-def corredor(nome):
-    dist = 0
+def corredor(id, nome):
+    distancia = 0
 
-    while dist < 100:
+    while distancia < 100:
         passo = random.randint(1, 10)
 
-        evento = random.choice(["normal", "tropecou", "boost"])
+        # eventos aleatórios
+        evento = random.random()
+        msg = ""
 
-        if evento == "tropecou":
-            msg = "⚠️ Tropeçou"
+        if evento < 0.2:
+            msg = "⚠️ Tropeçou "
             passo = 0
+        elif evento < 0.35:
+            msg = "🚀 Bônus de aceleração"
+            passo *= 2
 
-        elif evento == "boost":
-            msg = "🚀 Boost"
-            passo = random.randint(1, 5)
+        distancia += passo
+        distancia = min(distancia, 100)
 
-        else:
-            msg = ""
+        # ATUALIZA ESTADO (modo painel)
+        estado[id] = (nome, distancia, msg)
 
-        dist += passo
-        dist = min(dist, 100)
+        # THREADS EXECUTANDO COM PARALELISMO (VISUALIZAÇÃO MAIS CAÓTICA)
+        #Para usar o painel de ranking, comentar essa linha
+        #print(f"{nome:12} -> {distancia}m {msg}")
 
-        with lock:
-            estado[nome] = (msg, dist)
+        time.sleep(random.uniform(0.4, 0.9))
 
-        time.sleep(random.uniform(0.8, 1.5))
+    ranking.append(nome)
 
-    with lock:
-        estado[nome] = ("🏁 Finalizou", dist)
-        posicoes.append(nome)
-
+# painel (uma linha por corredor)
 def painel(nomes):
-    while True:
+    while len(ranking) < len(nomes):
         limpar()
-        print("🏁 CORRIDA EM TEMPO REAL\n")
+        print("🏁 CORRIDA DE THREADS\n")
 
-        with lock:
-            for nome in nomes:
-                status, dist = estado.get(nome, ("...", 0))
-                print(f"{nome:12} |{barra(dist)}| {dist:3d}m  {status}")
-
-            finalizados = len(posicoes)
-
-        if finalizados == len(nomes):
-            break
+        for nome, dist, msg in estado:
+            print(f"{nome:12} |{barra(dist)}| {dist:3d}m {msg}")
 
         time.sleep(0.2)
 
-# Corredores
-nomes = [f"Corredor {c}" for c in ["A", "B", "C", "D"]]
+# entrada do usuário
+qtd = int(input("Quantos corredores deseja? "))
 
 threads = []
+nomes = [f"Corredor {i+1}" for i in range(qtd)]
 
-for nome in nomes:
-    estado[nome] = ("Largando...", 0)
-    t = threading.Thread(target=corredor, args=(nome,))
+# estado inicial
+estado = [(nome, 0, "") for nome in nomes]
+
+print("\n🏁 Corrida iniciada!\n")
+
+# cria e inicia threads
+for i, nome in enumerate(nomes):
+    t = threading.Thread(target=corredor, args=(i, nome))
     threads.append(t)
     t.start()
 
-# Painel
+#Descomentar para o painel funcionar
 painel_thread = threading.Thread(target=painel, args=(nomes,))
 painel_thread.start()
 
+# espera threads terminarem
 for t in threads:
     t.join()
 
+#Descomentar para o painel funcionar
 painel_thread.join()
 
-# Resultado final
+# resultado final
 print("\n🏆 RESULTADO FINAL:\n")
-for i, nome in enumerate(posicoes):
+for i, nome in enumerate(ranking):
     medalhas = ["🥇", "🥈", "🥉"]
     pos = medalhas[i] if i < 3 else f"{i+1}º"
     print(f"{pos} {nome}")
