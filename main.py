@@ -38,8 +38,8 @@ def corredor(id, nome):
         estado[id] = (nome, distancia, msg)
 
         # THREADS EXECUTANDO COM PARALELISMO (VISUALIZAÇÃO MAIS CAÓTICA)
-        #Para usar o painel de ranking, comentar essa linha
-        #print(f"{nome:12} -> {distancia}m {msg}")
+        # Para usar esse modo, descomente a linha abaixo e comente o painel
+        # print(f"{nome:12} -> {distancia}m {msg}")
 
         time.sleep(random.uniform(0.4, 0.9))
 
@@ -67,13 +67,16 @@ estado = [(nome, 0, "") for nome in nomes]
 
 print("\n🏁 Corrida iniciada!\n")
 
+# ⏱️ INÍCIO DO TEMPO
+inicio = time.time()
+
 # cria e inicia threads
 for i, nome in enumerate(nomes):
     t = threading.Thread(target=corredor, args=(i, nome))
     threads.append(t)
     t.start()
 
-#Descomentar para o painel funcionar
+# iniciar painel
 painel_thread = threading.Thread(target=painel, args=(nomes,))
 painel_thread.start()
 
@@ -81,8 +84,11 @@ painel_thread.start()
 for t in threads:
     t.join()
 
-#Descomentar para o painel funcionar
 painel_thread.join()
+
+# ⏱️ FIM DO TEMPO
+fim = time.time()
+tempo_total = fim - inicio
 
 # resultado final
 print("\n🏆 RESULTADO FINAL:\n")
@@ -92,3 +98,6 @@ for i, nome in enumerate(ranking):
     print(f"{pos} {nome}")
 
 print("\n🏁 Corrida finalizada!")
+
+# ⏱️ EXIBIÇÃO DO TEMPO
+print(f"\n⏱️ Tempo total de execução: {tempo_total:.2f} segundos")
